@@ -1,0 +1,25 @@
+# Dépendances
+**/node_modules
+
+# Fichiers de build
+**/dist
+**/build
+**/.next
+**/out
+
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# Fichiers d'environnement
+.env
+.env.*
+!.env.example 
+# (La ligne !.env.example est une exception pour autoriser le commit du fichier d'exemple)
+
+# Fichiers de système d'exploitation et d'IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

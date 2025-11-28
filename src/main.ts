@@ -3,28 +3,20 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-// Note : On retire le logger Pino pour l'instant, car la configuration
-// sur Vercel peut être complexe. Vercel a son propre système de logs.
-
 async function bootstrap() {
-  // On ne buffer plus les logs, car Pino est retiré pour le moment
   const app = await NestFactory.create(AppModule);
 
-  // On récupère le ConfigService pour lire les variables d'environnement
   const configService = app.get(ConfigService);
   const frontendUrl = configService.get<string>('FRONTEND_URL');
 
-  // =======================================================
-  // ==        CONFIGURATION CORS DYNAMIQUE POUR PROD     ==
-  // =======================================================
+  // Configuration CORS dynamique
   app.enableCors({
-    // En production, on n'autorise QUE l'URL officielle du frontend
-    origin: frontendUrl,
+    origin: frontendUrl || 'http://localhost:3001', // Fallback pour le dev local
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
-  // =======================================================
 
+  // Pipe de validation global
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
     forbidNonWhitelisted: true,
@@ -35,19 +27,16 @@ async function bootstrap() {
   }));
 
   // =======================================================
-  // ==     MODIFICATION CRUCIALE POUR VERCEL / SERVERLESS  ==
+  // ==                LA CORRECTION FINALE               ==
   // =======================================================
-  // On n'appelle PAS app.listen() dans un environnement serverless.
-  // Vercel se charge de démarrer le serveur.
-  // Si vous avez besoin de lancer en local, vous pouvez utiliser un script différent.
+  // En production sur Vercel (ou autre), écouter sur le port fourni par l'environnement.
+  // En local, écouter sur le port 3000.
+  // L'hôte '0.0.0.0' permet au serveur d'être accessible de l'extérieur du conteneur.
+  const port = process.env.PORT || 3000;
+  await app.listen(port, '0.0.0.0');
   
-  // Pour le développement local, on garde app.listen()
-  if (process.env.NODE_ENV !== 'production') {
-    await app.listen(3000, '0.0.0.0');
-  }
-  
-  return app;
+  console.log(`Application is running on: ${await app.getUrl()}`);
+  // =======================================================
 }
 
-// On exporte l'instance de l'application pour que Vercel puisse l'utiliser
-export default bootstrap();
+bootstrap();

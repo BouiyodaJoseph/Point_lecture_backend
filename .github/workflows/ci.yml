@@ -1,51 +1,73 @@
-name: CI Pipeline
+# Nom du workflow qui apparaîtra dans l'onglet "Actions" de GitHub
+name: Backend CI Pipeline
 
+# Événements qui déclenchent le workflow
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
+# Liste des tâches à exécuter
 jobs:
+  # Nom de la tâche
   test-backend:
-    name: Test Backend
+    name: Run Backend Tests
+    # Machine virtuelle sur laquelle exécuter la tâche
     runs-on: ubuntu-latest
 
+    # Services à démarrer avant les étapes de test (ex: base de données)
     services:
+      # On nomme le service 'postgres'
       postgres:
+        # On utilise l'image Docker officielle de PostgreSQL version 15
         image: postgres:15
+        # Variables d'environnement pour configurer la base de données de test
         env:
           POSTGRES_USER: testuser
           POSTGRES_PASSWORD: testpassword
           POSTGRES_DB: testdb
+        # Mapper le port du conteneur au port de l'hôte pour la communication
         ports:
           - 5432:5432
+        # Options pour s'assurer que la base de données est prête avant de lancer les tests
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
 
+    # Séquence d'actions à exécuter
     steps:
+      # Étape 1 : Récupérer le code de votre dépôt
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Étape 2 : Mettre en place l'environnement Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '18' # Utiliser une version LTS de Node.js
 
-      - name: Install backend dependencies
+      # Étape 3 : Installer les dépendances
+      # 'npm ci' est plus rapide et plus sûr que 'npm install' pour la CI
+      - name: Install dependencies
         run: npm ci
-        working-directory: ./backend
+        # Pas de 'working-directory' car le code est à la racine
 
-      - name: Run backend tests
+      # Étape 4 : Lancer les tests de bout en bout
+      - name: Run e2e tests
         run: npm run test:e2e
-        working-directory: ./backend
+        # On injecte les variables d'environnement nécessaires pour que les tests se connectent
+        # à la base de données temporaire du service 'postgres'
         env:
-          DATABASE_HOST: localhost
+          DATABASE_HOST: localhost # Le service est accessible sur localhost
           DATABASE_PORT: 5432
           DATABASE_USER: testuser
           DATABASE_PASSWORD: testpassword
           DATABASE_TEST_NAME: testdb
-          # Ajoutez ici les autres variables d'env nécessaires aux tests
+          # Ajoutez ici TOUTES les autres variables d'environnement requises par votre application pour démarrer
+          JWT_SECRET_KEY: UneCleSecretePourLesTestsGitHubActions12345
+          FRONTEND_URL: http://localhost:3001
+          REDIS_HOST: localhost # Si vos tests ont besoin de Redis, il faudra aussi l'ajouter comme service
+          REDIS_PORT: 6379

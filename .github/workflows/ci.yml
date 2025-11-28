@@ -45,9 +45,9 @@ jobs:
 
       # Étape 2 : Mettre en place l'environnement Node.js
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/checkout@v4
         with:
-          node-version: '18' # Utiliser une version LTS de Node.js
+          node-version: '20' # Utiliser une version LTS de Node.js
 
       # Étape 3 : Installer les dépendances
       # 'npm ci' est plus rapide et plus sûr que 'npm install' pour la CI

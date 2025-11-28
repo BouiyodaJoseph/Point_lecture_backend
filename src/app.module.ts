@@ -4,10 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { LoggerModule } from 'nestjs-pino';
 
-// Module Redis manuel et global
+// Import de tous vos modules
 import { RedisClientModule } from './modules/redis/redis.module';
-
-// Tous les autres modules fonctionnels
 import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -22,14 +20,10 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
 import { KioskModule } from './modules/public/kiosk/kiosk.module';
 import { SessionModule } from './modules/public/session/session.module';
 import { ReadingModule } from './modules/public/reading/reading.module';
-// =======================================================
-// ==                 DERNIER IMPORT                    ==
-// =======================================================
 import { NotificationsModule } from './modules/partners/notifications/notifications.module';
 
 @Module({
   imports: [
-    // --- MODULES DE CONFIGURATION DE BASE ---
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
 
     LoggerModule.forRoot({
@@ -42,20 +36,42 @@ import { NotificationsModule } from './modules/partners/notifications/notificati
       },
     }),
 
+    // =======================================================
+    // ==     CONFIGURATION DE BDD DYNAMIQUE (PROD/DEV)     ==
+    // =======================================================
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get<string>('DATABASE_HOST', 'localhost'),
-        port: config.get<number>('DATABASE_PORT', 5432),
-        username: config.get<string>('DATABASE_USER', 'postgres'),
-        password: config.get<string>('DATABASE_PASSWORD'),
-        database: config.get<string>('DATABASE_NAME', 'ekiosque_partners'),
-        autoLoadEntities: true,
-        synchronize: false,
-      }),
+      useFactory: (configService: ConfigService) => {
+        const isProduction = configService.get<string>('NODE_ENV') === 'production';
+        
+        if (isProduction) {
+          // Utilise l'URL fournie par Vercel Postgres en production
+          return {
+            type: 'postgres',
+            url: configService.get<string>('POSTGRES_URL'),
+            ssl: {
+              rejectUnauthorized: false,
+            },
+            autoLoadEntities: true,
+            synchronize: false,
+          };
+        } else {
+          // Utilise les variables d'environnement locales pour le développement
+          return {
+            type: 'postgres',
+            host: configService.get<string>('DATABASE_HOST', 'localhost'),
+            port: configService.get<number>('DATABASE_PORT', 5432),
+            username: configService.get<string>('DATABASE_USER', 'postgres'),
+            password: configService.get<string>('DATABASE_PASSWORD'),
+            database: configService.get<string>('DATABASE_NAME', 'ekiosque_partners'),
+            autoLoadEntities: true,
+            synchronize: false, // On utilise les migrations, même en local
+          };
+        }
+      },
     }),
+    // =======================================================
 
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -69,7 +85,7 @@ import { NotificationsModule } from './modules/partners/notifications/notificati
 
     RedisClientModule,
 
-    // --- MODULES FONCTIONNELS DE L'APPLICATION (LISTE COMPLÈTE) ---
+    // Liste complète des modules fonctionnels
     AdminModule,
     AuthModule,
     UsersModule,
@@ -84,7 +100,7 @@ import { NotificationsModule } from './modules/partners/notifications/notificati
     KioskModule,
     SessionModule,
     ReadingModule,
-    NotificationsModule, // <-- DERNIER MODULE AJOUTÉ
+    NotificationsModule,
   ],
 })
 export class AppModule {}

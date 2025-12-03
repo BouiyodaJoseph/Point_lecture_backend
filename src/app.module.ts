@@ -4,10 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { LoggerModule } from 'nestjs-pino';
 
-// Module Redis manuel et global
+// Import de tous les modules de l'application
 import { RedisClientModule } from './modules/redis/redis.module';
-
-// Tous les modules fonctionnels de l'application
 import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -42,24 +40,43 @@ import { NotificationsModule } from './modules/partners/notifications/notificati
       },
     }),
 
-    // Configuration de la base de données unifiée (Prod/Dev)
+    // --- CONFIGURATION DE LA BASE DE DONNÉES (DYNAMIQUE) ---
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        // Utilise une seule variable d'environnement pour l'URL de connexion
-        url: configService.get<string>('DATABASE_URL'),
-        // L'option SSL est requise pour Vercel/Neon et ne pose pas de problème en local
-        ssl: {
-          rejectUnauthorized: false,
-        },
-        autoLoadEntities: true,
-        synchronize: false, // Toujours à 'false' quand on utilise des migrations
-      }),
+      useFactory: (configService: ConfigService) => {
+        const isProduction = configService.get<string>('NODE_ENV') === 'production';
+        
+        if (isProduction) {
+          // Utilise les variables séparées fournies par Vercel en production
+          return {
+            type: 'postgres',
+            host: configService.get<string>('POSTGRES_HOST'),
+            port: 5432, // Le port est standard pour Postgres
+            username: configService.get<string>('POSTGRES_USER'),
+            password: configService.get<string>('POSTGRES_PASSWORD'),
+            database: configService.get<string>('POSTGRES_DATABASE'),
+            ssl: { rejectUnauthorized: false }, // Requis pour Vercel/Neon
+            autoLoadEntities: true,
+            synchronize: false, // Jamais 'true' en production
+          };
+        } else {
+          // Utilise les variables du fichier .env pour le développement local
+          return {
+            type: 'postgres',
+            host: configService.get<string>('DATABASE_HOST', 'localhost'),
+            port: configService.get<number>('DATABASE_PORT', 5432),
+            username: configService.get<string>('DATABASE_USER', 'postgres'),
+            password: configService.get<string>('DATABASE_PASSWORD'),
+            database: configService.get<string>('DATABASE_NAME', 'ekiosque_partners'),
+            autoLoadEntities: true,
+            synchronize: false, // On utilise les migrations
+          };
+        }
+      },
     }),
 
-    // Configuration globale de JWT
+    // --- CONFIGURATION GLOBALE DE JWT ---
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -70,10 +87,10 @@ import { NotificationsModule } from './modules/partners/notifications/notificati
       global: true,
     }),
 
-    // Notre module Redis manuel et global
+    // --- MODULE REDIS ---
     RedisClientModule,
 
-    // --- MODULES FONCTIONNELS DE L'APPLICATION (LISTE COMPLÈTE) ---
+    // --- TOUS LES MODULES FONCTIONNELS ---
     AdminModule,
     AuthModule,
     UsersModule,

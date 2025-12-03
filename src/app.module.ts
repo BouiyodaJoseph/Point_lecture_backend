@@ -27,7 +27,7 @@ import { NotificationsModule } from './modules/partners/notifications/notificati
     // --- MODULES DE CONFIGURATION DE BASE ---
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: '.env', // Utilise .env pour le développement local
     }),
 
     LoggerModule.forRoot({
@@ -40,7 +40,7 @@ import { NotificationsModule } from './modules/partners/notifications/notificati
       },
     }),
 
-    // --- CONFIGURATION DE LA BASE DE DONNÉES (DYNAMIQUE) ---
+    // --- CONFIGURATION DE LA BASE DE DONNÉES (DYNAMIQUE PROD/DEV) ---
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

@@ -43,30 +43,29 @@ import { NotificationsModule } from './modules/partners/notifications/notificati
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        const isProduction = configService.get<string>('NODE_ENV') === 'production';
+        // En production, Vercel fournit POSTGRES_URL. S'il existe, on l'utilise.
+        const productionUrl = configService.get<string>('POSTGRES_URL');
         
-        if (isProduction) {
-          // Utilise l'URL fournie par Vercel Postgres en production
+        if (productionUrl) {
+          // Configuration pour la production (Vercel)
           return {
             type: 'postgres',
-            url: configService.get<string>('POSTGRES_URL'),
-            ssl: {
-              rejectUnauthorized: false,
-            },
+            url: productionUrl,
+            ssl: { rejectUnauthorized: false }, // Requis pour Vercel/Neon
             autoLoadEntities: true,
             synchronize: false,
           };
         } else {
-          // Utilise les variables d'environnement locales pour le développement
+          // Sinon, on utilise la configuration locale du fichier .env
           return {
             type: 'postgres',
-            host: configService.get<string>('DATABASE_HOST', 'localhost'),
-            port: configService.get<number>('DATABASE_PORT', 5432),
-            username: configService.get<string>('DATABASE_USER', 'postgres'),
+            host: configService.get<string>('DATABASE_HOST'),
+            port: configService.get<number>('DATABASE_PORT'),
+            username: configService.get<string>('DATABASE_USER'),
             password: configService.get<string>('DATABASE_PASSWORD'),
-            database: configService.get<string>('DATABASE_NAME', 'ekiosque_partners'),
+            database: configService.get<string>('DATABASE_NAME'),
             autoLoadEntities: true,
-            synchronize: false, // On utilise les migrations, même en local
+            synchronize: false,
           };
         }
       },

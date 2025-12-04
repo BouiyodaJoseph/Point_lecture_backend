@@ -3,34 +3,31 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-// On encapsule le bootstrap dans une variable `handler` que l'on va exporter.
+// On encapsule le bootstrap dans une variable que l'on va exporter.
 // C'est ce que Vercel cherchera.
-const bootstrap = async () => {
+async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  // Configuration CORS dynamique
   const frontendUrl = configService.get<string>('FRONTEND_URL');
   app.enableCors({
     origin: frontendUrl,
     credentials: true,
   });
 
-  // Pipe de validation global
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
     forbidNonWhitelisted: true,
     transform: true,
-    transformOptions: {
-      enableImplicitConversion: true,
-    },
+    transformOptions: { enableImplicitConversion: true },
   }));
   
-  // On initialise l'application sans la démarrer
+  // En environnement serverless, on initialise l'app sans l'écouter
   await app.init();
-  // On retourne le gestionnaire de requêtes (Express)
+  
+  // On retourne le serveur HTTP sous-jacent
   return app.getHttpAdapter().getInstance();
-};
+}
 
-// On exporte la variable pour que Vercel puisse l'importer.
+// On exporte la promesse de l'application bootstrappée
 export default bootstrap();
